@@ -1,9 +1,8 @@
 # governance/governance.py
 import json
 import requests
-
-import requests
-import json
+import pandas as pd
+import joblib
 
 class Results:
     def __init__(self):
@@ -47,6 +46,74 @@ class Results:
             print("Submission successful")
         else:
             print("Error submitting data: {}".format(response.content))
+
+    def register_artifact(self, type, data, uri, inherit_details_from_stage, name="", description="", permissions="", how_to_use="", task="", business_use_case="", warnings=""):
+        fields = ",".join(data.columns.values)
+        df_hash = joblib.hash(data)
+        payload = {
+            "unique_hash": df_hash,
+            "uri": uri,
+            "fields": fields,
+            "inherit_details_from_stage": inherit_details_from_stage
+        }
+
+        # Check if we should inherit details from the stage
+        if inherit_details_from_stage and self.stage_id is not None:
+            stage_url = self.server_url + "stage/{}".format(self.stage_id)
+            headers = {"Content-Type": "application/json", "agent_id": self.agent_id, "token": self.agent_token}
+            response = requests.get(stage_url, headers=headers)
+            if response.status_code != 200:
+                print("Error retrieving stage details: {}".format(response.content))
+            else:
+                stage_data = response.json()
+                datasets = stage_data["datasets"]
+                if len(datasets) > 0:
+                    dataset = datasets[0]
+                    defaults = {
+                        "name": dataset["name"],
+                        "description": dataset["description"],
+                        "permissions": dataset["permissions"],
+                        "how_to_use": dataset["how_to_use"],
+                        "task": dataset["task"],
+                        "business_use_case": dataset["business_use_case"],
+                        "warnings": dataset["warnings"]
+                    }
+                    payload.update(defaults)
+                else:
+                    print("No datasets found in stage {}".format(self.stage_id))
+
+        # Override any inherited values with user-specified values
+        overrides = {
+            "name": name,
+            "description": description,
+            "permissions": permissions,
+            "how_to_use": how_to_use,
+            "task": task,
+            "business_use_case": business_use_case,
+            "warnings": warnings
+        }
+        payload.update({k: v for k, v in overrides.items() if v})
+
+        # Map the type value to the corresponding endpoint
+        endpoint_map = {
+            "dataset": "dataset/",
+            "model": "model/",
+            "featureset": "featureset/"
+        }
+
+        endpoint = endpoint_map.get(type)
+        if endpoint is None:
+            print("Invalid type specified")
+            return
+
+        url = self.server_url + endpoint
+        headers = {"Content-Type": "application/json", "agent_id": self.agent_id, "token": self.agent_token}
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+        if response.status_code == 200:
+            print("Registration submitted successfully")
+        else:
+            print("Error submitting registration: {}".format(response.content))
 
 def governance():
     return Results()

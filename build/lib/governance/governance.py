@@ -1,9 +1,8 @@
 # governance/governance.py
 import json
 import requests
-
-import requests
-import json
+import pandas as pd
+import joblib
 
 class Results:
     def __init__(self):
@@ -48,5 +47,30 @@ class Results:
         else:
             print("Error submitting data: {}".format(response.content))
 
+    def register_artifact(self, type, data, uri, inherit_details_from_stage, name="", description="", permissions="", how_to_use="", task="", business_use_case="", warnings=""):
+        fields = ",".join(data.columns.values)
+        df_hash = joblib.hash(data)
+        payload = {
+            "unique_hash": df_hash,
+            "description": description,
+            "permissions": permissions,
+            "how_to_use": how_to_use,
+            "task": task,
+            "business_use_case": business_use_case,
+            "warnings": warnings,
+            "uri": uri,
+            "fields": fields,
+            "inherit_details_from_stage": inherit_details_from_stage
+        }
+        endpoint = "/{}".format(type)
+        url = self.server_url + endpoint + "/"
+        headers = {"Content-Type": "application/json", "agent_id": self.agent_id, "token": self.agent_token}
+        if self.api_key is not None:
+            headers["X-Api-Key"] = self.api_key
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            print("Registration successful")
+        else:
+            print("Error submitting registration: {}".format(response.content))
 def governance():
     return Results()
