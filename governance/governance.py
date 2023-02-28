@@ -47,44 +47,49 @@ class Results:
         else:
             print("Error submitting data: {}".format(response.content))
 
-    def register_artifact(self, type, data, uri, inherit_details_from_stage, name="", description="", permissions="", how_to_use="", task="", business_use_case="", warnings=""):
+    def register_artifact(self, type, data, uri, inherit_details_from_stage, name="", description="", permissions="", how_to_use="", task="", business_use_case="", warnings="", version=""):
         fields = ",".join(data.columns.values)
         df_hash = joblib.hash(data)
         payload = {
             "unique_hash": df_hash,
             "uri": uri,
             "fields": fields,
-            "inherit_details_from_stage": inherit_details_from_stage
+            "inherit_details_from_stage": inherit_details_from_stage,
+            "stage_id": self.stage_id
         }
 
         # Check if we should inherit details from the stage
-        if inherit_details_from_stage and self.stage_id is not None:
-            stage_url = self.server_url + "stage/{}".format(self.stage_id)
+        if inherit_details_from_stage and self.project_id is not None:
+            project_url = self.server_url + "/project/{}".format(self.project_id)
             headers = {"Content-Type": "application/json", "agent_id": self.agent_id, "token": self.agent_token}
-            response = requests.get(stage_url, headers=headers)
+            response = requests.get(project_url, headers=headers)
             if response.status_code != 200:
-                print("Error retrieving stage details: {}".format(response.content))
+                print("Error retrieving project details: {}".format(response.content))
             else:
-                stage_data = response.json()
-                datasets = stage_data["datasets"]
-                if len(datasets) > 0:
-                    dataset = datasets[0]
-                    defaults = {
-                        "name": dataset["name"],
-                        "description": dataset["description"],
-                        "permissions": dataset["permissions"],
-                        "how_to_use": dataset["how_to_use"],
-                        "task": dataset["task"],
-                        "business_use_case": dataset["business_use_case"],
-                        "warnings": dataset["warnings"]
-                    }
-                    payload.update(defaults)
-                else:
-                    print("No datasets found in stage {}".format(self.stage_id))
+                project_data = response.json()
+                stages = project_data.get("stages", [])
+                for stage in stages:
+                    datasets = stage.get("datasets", [])
+                    if datasets:
+                        dataset = datasets[0]
+                        defaults = {
+                            "name": dataset.get("name", ""),
+                            "version": dataset.get("version", ""),
+                            "description": dataset.get("description", ""),
+                            "permissions": dataset.get("permissions", ""),
+                            "how_to_use": dataset.get("how_to_use", ""),
+                            "task": dataset.get("task", ""),
+                            "business_use_case": dataset.get("business_use_case", ""),
+                            "warnings": dataset.get("warnings", ""),
+                            "inherits_id": dataset.get("dataset_id", "")
+                        }
+                        payload.update(defaults)
+                        break
 
         # Override any inherited values with user-specified values
         overrides = {
             "name": name,
+            "version":version,
             "description": description,
             "permissions": permissions,
             "how_to_use": how_to_use,
