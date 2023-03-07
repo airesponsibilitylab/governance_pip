@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: governance
-Version: 1.1.0
+Version: 1.2.0
 Summary: Automate AI Governance requirements by connecting your python notebooks directly to the Mission Control MLOps platform.
 Home-page: https://github.com/airesponsibilitylab/governance_pip
 Author: Ramsay Brown

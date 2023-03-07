@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="governance",
-    version="1.1.0",
+    version="1.2.0",
     author="Ramsay Brown",
     author_email="ramsay@airesponsibilitylab.com",
     description="Automate AI Governance requirements by connecting your python notebooks directly to the Mission Control MLOps platform.",
